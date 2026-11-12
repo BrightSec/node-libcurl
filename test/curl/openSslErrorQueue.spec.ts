@@ -19,20 +19,26 @@ describe('Easy', () => {
   const agent = new https.Agent({ keepAlive: true, maxSockets: 1 })
 
   const get = () =>
-    new Promise<{ body: string; socket: Socket }>((resolve, reject) => {
-      https
-        .get(
+    new Promise<{ body: string; socket: Socket; reusedSocket: boolean }>(
+      (resolve, reject) => {
+        let socket: Socket
+        const req = https.get(
           serverInstance.url,
           { agent, rejectUnauthorized: false },
           (res) => {
             let body = ''
             res.setEncoding('utf8')
             res.on('data', (chunk: string) => (body += chunk))
-            res.on('end', () => resolve({ body, socket: res.socket as Socket }))
+            res.on('end', () =>
+              resolve({ body, socket, reusedSocket: req.reusedSocket }),
+            )
           },
         )
-        .on('error', reject)
-    })
+        // Node detaches a kept-alive socket from the response before `end`.
+        req.on('socket', (s) => (socket = s as Socket))
+        req.on('error', reject)
+      },
+    )
 
   beforeAll(async () => {
     serverInstance.app.get('/', (_req, res) => {
@@ -58,14 +64,16 @@ describe('Easy', () => {
         expect(
           easy.setOpt('SSLENGINE', 'node-libcurl-nonexistent-engine'),
         ).toBe(CurlCode.CURLE_SSL_ENGINE_NOTFOUND)
+
+        // Before close(): it calls into libcurl too and would clear the queue.
+        const second = await get()
+
+        expect(second.body).toBe('ok')
+        expect(second.reusedSocket).toBe(true)
+        expect(second.socket).toBe(first.socket)
       } finally {
         easy.close()
       }
-
-      const second = await get()
-
-      expect(second.body).toBe('ok')
-      expect(second.socket).toBe(first.socket)
     })
   })
 })
