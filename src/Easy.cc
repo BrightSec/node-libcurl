@@ -19,6 +19,7 @@
 #include "CurlMime.h"
 #include "Easy.h"
 #include "LocaleGuard.h"
+#include "OpenSslErrorQueue.h"
 #include "Share.h"
 #include "macros.h"
 
@@ -424,6 +425,7 @@ Napi::Value Easy::DebugLog(const Napi::CallbackInfo& info) {
 // SetOpt method - simplified version
 Napi::Value Easy::SetOpt(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
   auto curl = env.GetInstanceData<Curl>();
 
   if (!this->isOpen) {
@@ -1113,6 +1115,7 @@ Napi::Value Easy::GetInfo(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Perform(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw Napi::TypeError::New(env, "Curl handle is closed");
@@ -1128,6 +1131,7 @@ Napi::Value Easy::Perform(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Reset(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle is closed", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1153,6 +1157,7 @@ Napi::Value Easy::Reset(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Close(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle already closed.", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1183,6 +1188,7 @@ Napi::Value Easy::StrError(const Napi::CallbackInfo& info) {
 // Stub implementations for now
 Napi::Value Easy::Send(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle is closed.", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1213,6 +1219,7 @@ Napi::Value Easy::Send(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Recv(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle is closed.", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1243,6 +1250,7 @@ Napi::Value Easy::Recv(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::WsRecv(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle is closed.", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1291,6 +1299,7 @@ Napi::Value Easy::WsRecv(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::WsSend(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Curl handle is closed.", CURLE_BAD_FUNCTION_ARGUMENT);
@@ -1387,6 +1396,7 @@ Napi::Value Easy::WsStartFrame(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Upkeep(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw Napi::TypeError::New(env, "Curl handle is closed");
@@ -1402,6 +1412,7 @@ Napi::Value Easy::Upkeep(const Napi::CallbackInfo& info) {
 
 Napi::Value Easy::Pause(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw Napi::TypeError::New(env, "Curl handle is closed");

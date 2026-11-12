@@ -22,6 +22,7 @@
 #include "Http2PushFrameHeaders.h"
 #include "LocaleGuard.h"
 #include "Multi.h"
+#include "OpenSslErrorQueue.h"
 #include "js_native_api.h"
 #include "napi.h"
 
@@ -303,6 +304,7 @@ Napi::Value Multi::SetOpt(const Napi::CallbackInfo& info) {
 
 Napi::Value Multi::AddHandle(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
   auto curl = env.GetInstanceData<Curl>();
 
   if (!this->isOpen) {
@@ -350,6 +352,7 @@ Napi::Value Multi::AddHandle(const Napi::CallbackInfo& info) {
 
 Napi::Value Multi::RemoveHandle(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
   auto curl = env.GetInstanceData<Curl>();
 
   if (!this->isOpen) {
@@ -389,6 +392,7 @@ Napi::Value Multi::RemoveHandle(const Napi::CallbackInfo& info) {
 
 Napi::Value Multi::Perform(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
   auto curl = env.GetInstanceData<Curl>();
 
   if (!this->isOpen) {
@@ -482,6 +486,7 @@ Napi::Value Multi::GetCount(const Napi::CallbackInfo& info) {
 
 Napi::Value Multi::Close(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   if (!this->isOpen) {
     throw CurlError::New(env, "Multi handle already closed.", CURLM_BAD_HANDLE);
@@ -526,6 +531,8 @@ void Multi::ProcessMessages() {
       CURL* easy = msg->easy_handle;
       CURLcode result = msg->data.result;
 
+      // The callback runs JS, which may do TLS I/O on Node's sockets.
+      ClearOpenSslErrorQueue();
       this->CallOnMessageCallback(easy, result);
     }
   }
@@ -857,6 +864,7 @@ UV_TIMER_CB(Multi::OnTimeout) {
   Napi::Env env = obj->Env();
   Napi::HandleScope handleScope(env);
   Napi::CallbackScope callbackScope(env, *obj->asyncContext);
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   NODE_LIBCURL_DEBUG_LOG(obj, "Multi::OnTimeout", "");
 
@@ -892,6 +900,7 @@ void Multi::OnSocket(uv_poll_t* handle, int status, int events) {
   Napi::Env env = ctx->multi->Env();
   Napi::HandleScope handleScope(env);
   Napi::CallbackScope callbackScope(env, *ctx->multi->asyncContext);
+  OpenSslErrorQueueGuard openSslErrorQueueGuard;
 
   NODE_LIBCURL_DEBUG_LOG(ctx->multi, "Multi::OnSocket", "events: " + std::to_string(events));
 
