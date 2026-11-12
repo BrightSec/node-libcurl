@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Breaking Change
 
 ### Fixed
+- Fixed Node.js TLS sockets in the same process being destroyed with an OpenSSL error that belongs to libcurl, e.g. `ERR_SSL_COULD_NOT_LOAD_THE_SHARED_LIBRARY ... filename(/dev/null/pkcs11.so)` right after `setOpt('SSLENGINE', ...)`. The prebuilt Linux and Windows binaries resolve libcurl's OpenSSL calls to the OpenSSL that Node itself exports, so both share one per-thread error queue. libcurl does not always drain it: `CURLOPT_SSLENGINE` first tries to load the provider by name from the modules directory, which is the null device in Node's build (`/dev/null`, `NUL`), and that failure stays queued even when the provider then loads from `OPENSSL_CONF`. Node's next `SSL_read()` on any TLS socket, for example a WebSocket, saw the stale error through `SSL_get_error()` and treated it as fatal. The addon now clears the queue whenever control leaves libcurl for JS or libuv: after `Easy` and `Multi` calls into libcurl, after `curl_multi_socket_action()`, and before the `onMessage` callback. macOS prebuilds link their own OpenSSL and were not affected.
 
 ### Added
 
