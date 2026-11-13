@@ -11,6 +11,9 @@
 #if __has_include(<openssl/err.h>)
 #include <openssl/err.h>
 #define NODE_LIBCURL_HAS_OPENSSL_ERR 1
+#elif defined(NODE_LIBCURL_REQUIRE_OPENSSL_ERR)
+#error \
+    "<openssl/err.h> not found, but this Node.js exports its bundled OpenSSL, whose error queue libcurl shares and must clear. Fix the include path, or set npm_config_node_libcurl_openssl_err=optional to build without it."
 #endif
 
 namespace NodeLibcurl {

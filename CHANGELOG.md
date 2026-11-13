@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 ### Changed
+- Building for a Node.js that exports its bundled OpenSSL (official Node.js builds) now fails with an explicit `#error` when `<openssl/err.h>` cannot be found, instead of silently compiling the OpenSSL error queue fix above out. The header ships with Node's own headers (`include/node/openssl`) and with vcpkg on Windows, so this only fires on a broken include path. Electron (BoringSSL, no OpenSSL headers or exports) and Node.js built against a shared system OpenSSL keep the header optional. Set `npm_config_node_libcurl_openssl_err=optional` to build without it anyway.
 
 ## [5.1.2] - 2026-06-08
 
