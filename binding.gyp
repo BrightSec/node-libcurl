@@ -21,7 +21,15 @@
     # it for developer source builds requires the static runtime packages
     # (e.g. libstdc++-static on RHEL/Rocky, libstdc++-dev on Ubuntu) to be
     # installed, which is not a standard developer requirement.
-    'node_libcurl_static_runtime%': 'false'
+    'node_libcurl_static_runtime%': 'false',
+    # "auto": the build fails when <openssl/err.h> is missing for a runtime that
+    # exports its bundled OpenSSL (official Node.js), because libcurl then shares
+    # that OpenSSL's error queue and must clear it. "optional": never fail.
+    'node_libcurl_openssl_err%': 'auto',
+    # Normally set by the config.gypi node-gyp generates for the target runtime.
+    'node_use_openssl%': 'false',
+    'node_shared_openssl%': 'true',
+    'built_with_electron%': 0
   },
   # Node 26+ (Windows): the official Node build switched to ClangCL + ThinLTO,
   # so common.gypi injects -flto=thin (compiler) and opt:lldltojobs=N (linker)
@@ -75,6 +83,13 @@
         'NAPI_EXPERIMENTAL=1',
       ],
       'conditions': [
+        # Electron ships BoringSSL without OpenSSL headers and does not export
+        # OpenSSL symbols, so the addon's own OpenSSL keeps a separate queue.
+        ['node_libcurl_openssl_err=="auto" and node_use_openssl=="true" and node_shared_openssl=="false" and built_with_electron==0', {
+          'defines': [
+            'NODE_LIBCURL_REQUIRE_OPENSSL_ERR'
+          ]
+        }],
         ['node_libcurl_no_setlocale=="true"', {
           'defines': [
             'NODE_LIBCURL_NO_SETLOCALE'
