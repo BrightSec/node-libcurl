@@ -98,13 +98,11 @@ declare class Multi {
    * Sets the [`PUSHFUNCTION`](https://curl.haxx.se/libcurl/c/CURLMOPT_PUSHFUNCTION.html) option.
    *
    * @remarks
-   * You **must** not use the {@link Http2PushFrameHeaders | `Http2PushFrameHeaders`} object outside
-   *  of this callback, doing so will try to use memory that libcurl has already
-   *  freed and, in the best case scenario, will cause a segmentation fault.
+   * The {@link Http2PushFrameHeaders | `Http2PushFrameHeaders`} object is only valid during
+   *  this callback. Its `getByName()` and `getByIndex()` methods throw after the callback returns.
    *
-   * In case you have denied the push, you **must** also not use the `duplicatedHandle`
-   *  outside of this callback, as libcurl would already have closed it and you would
-   *  try to access memory that has been freed.
+   * The `duplicatedHandle` is closed by libcurl if you deny the push.
+   * HTTP/2 push dispatch requires libcurl 8.4.0 or newer.
    *
    * Errors thrown inside this callback will have the same effect than returning `CurlPush.Deny`.
    *
