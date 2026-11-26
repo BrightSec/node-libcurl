@@ -37,7 +37,7 @@ describe('install', () => {
     expect(run.mock.calls.map(([script, args]) => [script, args])).toEqual([
       [nodePreGyp, ['install']],
       [vcpkgSetup, []],
-      [nodePreGyp, ['install', '--fallback-to-build']],
+      [nodePreGyp, ['install', '--build-from-source']],
     ])
   })
 

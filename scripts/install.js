@@ -36,6 +36,8 @@ function install({
     return run(nodePreGyp, fallbackInstallArgs, env)
   }
 
+  let buildArgs = fallbackInstallArgs
+
   // A git checkout keeps vcpkg ready for later `pnpm pregyp rebuild` runs.
   if (!isSourceBuildRequested(env) && !isGitRepo) {
     // node-pre-gyp lets npm_config_* env vars override its argv. Dropping the
@@ -46,11 +48,14 @@ function install({
     console.log(
       'node-libcurl: prebuilt binary is not available, building from source with vcpkg',
     )
+    // A failed extraction can leave a partial node_libcurl.node, which another
+    // `install` would accept as installed. A source build deletes it first.
+    buildArgs = ['install', '--build-from-source']
   }
 
   const vcpkgStatus = run(vcpkgSetup, [], env)
   if (vcpkgStatus !== 0) return vcpkgStatus
-  return run(nodePreGyp, fallbackInstallArgs, env)
+  return run(nodePreGyp, buildArgs, env)
 }
 
 module.exports = { install, nodePreGyp, vcpkgSetup }
