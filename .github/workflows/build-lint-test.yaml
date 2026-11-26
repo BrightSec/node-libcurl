@@ -204,6 +204,8 @@ jobs:
 
       - name: 'Run tests (Alpine arm64)'
         if: matrix.os == 'alpine-arm64' && matrix.electron-version == ''
+        # http2PushHeaders.spec compiles a native fixture with node-gyp, which
+        # needs a toolchain that the bare node:alpine image does not ship.
         run: |
           PNPM_VERSION=$(node -e "const {packageManager}=require('./package.json');console.log(packageManager.split('@')[1])")
           docker run --rm \
@@ -212,7 +214,11 @@ jobs:
             -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" \
             -w "${GITHUB_WORKSPACE}" \
             "node:${{ matrix.node }}-alpine3.22" \
-            sh -c 'npm install -g pnpm@${PNPM_VERSION} && pnpm test:coverage'
+            sh -c '
+              apk add --no-cache python3 make g++ &&
+              npm install -g pnpm@${PNPM_VERSION} &&
+              pnpm test:coverage
+            '
 
       - name: Upload coverage to Codecov
         if: matrix.record-coverage && matrix.electron-version != ''
