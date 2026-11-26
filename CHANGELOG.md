@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 ### Changed
+- On Windows, installing from npm no longer builds curl and its dependencies with vcpkg when the prebuilt binary is available. vcpkg used to run unconditionally in `preinstall`, so every install took 20-30 minutes and needed git and Visual Studio, even though the prebuilt binary was downloaded afterwards. vcpkg now runs only when the download fails, when `npm_config_build_from_source` is set, or in a git checkout.
 
 ## [5.2.0] - 2026-11-25
 
