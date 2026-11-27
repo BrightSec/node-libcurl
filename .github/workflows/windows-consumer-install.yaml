@@ -72,7 +72,7 @@ jobs:
           # native command unless we tell it to. Without this, a failed
           # `pnpm add` (gyp couldn't find VS, native build threw, etc.)
           # would slide right past and the curl.exe check below would
-          # happily find the vcpkg-built curl from preinstall and report
+          # happily find the vcpkg-built curl from scripts/install.js and report
           # success — exactly what fooled us on the last run.
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandErrorActionPreference = $true
@@ -84,23 +84,18 @@ jobs:
             throw 'Packed node-libcurl tarball was not found'
           }
 
-          # 'nested-' * 4 puts the consumer at ~110 chars before node_modules,
-          # which mirrors what real-world pnpm monorepos hit (workspace +
-          # a couple of nested package depths). The previous 'nested-' * 12
-          # forced moduleRoot to ~256 chars, leaving no headroom under
-          # MAX_PATH for MSVC's c1xx.exe — that compiler front-end doesn't
-          # carry the long-path app manifest, so the registry opt-in does
-          # nothing for it. With *4 we have ~135 chars of slack inside the
-          # 260-char ceiling for MSBuild's intermediate/log files.
-          $consumerRoot = Join-Path $env:RUNNER_TEMP (
-            'node-libcurl-consumer-' + ('nested-' * 4)
-          )
+          # Keep this path short. The scoped name puts @brightsec in the path
+          # twice and makes pnpm hash the .pnpm entry, which adds ~28 chars
+          # over upstream's unscoped layout. MSBuild's CL task (VS 18.11+)
+          # throws PathTooLongException once the package root reaches ~178
+          # chars, and the long-path registry opt-in does not help it.
+          $consumerRoot = Join-Path $env:RUNNER_TEMP 'node-libcurl-consumer'
 
           New-Item -ItemType Directory -Force -Path $consumerRoot
           Set-Location $consumerRoot
           # pnpm v10 blocks dependency install scripts by default. The consumer
-          # has to opt in for any package that needs its preinstall/install/
-          # postinstall to run — and node-libcurl needs all three to run the
+          # has to opt in for any package that needs its install/postinstall
+          # to run — and node-libcurl needs both to run the
           # vcpkg setup and build the native addon. Without this approval the
           # install completes "successfully" but leaves the package non-
           # functional (no vcpkg-installed curl.exe, no native binding).
@@ -166,10 +161,61 @@ jobs:
           $curlVersion
           $curlVersionText = $curlVersion -join "`n"
 
+          if ($curlVersionText -notmatch '\bbrotli/1\.2\.1\b') {
+            throw 'Windows curl build did not link the patched Brotli 1.2.1 decoder'
+          }
+
           if ($curlVersionText -notmatch 'Features:.*\bIDN\b') {
             throw 'Windows curl build did not retain IDN support'
           }
 
           if ($curlVersionText -match 'libidn2') {
             throw 'Windows curl build still links libidn2'
+          }
+
+  npm-prebuilt-install:
+    runs-on: windows-latest
+    # A prebuilt install takes about a minute. Hitting this limit means the
+    # install fell back to the 20-30 minute vcpkg source build.
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Setup Node and PNPM
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          node-version: '24'
+
+      - name: Build package tarball
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm build:dist
+          pnpm pack --pack-destination $env:RUNNER_TEMP
+
+      - name: Install as npm consumer from the prebuilt binary
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandErrorActionPreference = $true
+
+          $package = Get-ChildItem $env:RUNNER_TEMP -Filter '*node-libcurl-*.tgz' |
+            Select-Object -First 1
+          if (-not $package) {
+            throw 'Packed node-libcurl tarball was not found'
+          }
+
+          $consumerRoot = Join-Path $env:RUNNER_TEMP 'node-libcurl-npm-consumer'
+          New-Item -ItemType Directory -Force -Path $consumerRoot
+          Set-Location $consumerRoot
+          npm init -y | Out-Null
+          npm install $package.FullName
+
+          node -e "console.log(require('@brightsec/node-libcurl').Curl.getVersionInfoString())"
+
+          $vcpkgCacheRoot = Join-Path $env:LOCALAPPDATA 'node-libcurl-vcpkg'
+          if (Test-Path $vcpkgCacheRoot) {
+            throw "vcpkg ran although the prebuilt binary was available: $vcpkgCacheRoot exists"
           }
